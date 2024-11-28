@@ -290,3 +290,66 @@ def calculate_results(y_true, y_pred):
                   "recall": model_recall,
                   "f1": model_f1}
   return model_results
+
+
+def get_lines(filename: str) -> list:
+  """
+  Reads filename (a text file) and returns the lines of text as a list.
+
+  Args:
+      filename: a string containing the target filepath to read.
+
+  Returns:
+      A list of strings with one string per line from the target filename.
+      For example:
+      ["this is the first line of filename",
+       "this is the second line of filename",
+       "..."]
+  """
+  with open(filename, encoding='utf-8') as f:
+    return f.readlines()
+    
+
+def preprocess_text_with_line_numbers(filename: str) -> list[dict]:
+  """Returns a list of dictionaries of abstract line data.
+
+  Takes in filename, reads its contents and sorts through each line,
+  extracting things like the target label, the text of the sentence,
+  how many sentences are in the current abstract and what sentence number
+  the target line is.
+
+  Args:
+      filename: a string of the target text file to read and extract line data
+      from.
+
+  Returns:
+      A list of dictionaries each containing a line from an abstract,
+      the lines label, the lines position in the abstract and the total number
+      of lines in the abstract where the line is from. For example:
+
+      [{"target": 'CONCLUSION',
+        "text": The study couldn't have gone better, turns out people are kinder than you think",
+        "line_number": 8,
+        "total_lines": 8}]
+  """
+  input_lines: list = get_lines(filename)
+  abstract_lines: str = "" # create an empty abstract
+  abstract_samples: list = [] # create an empty list of abstracts
+  for line in input_lines:
+    if line.startswith('###'):
+      abstract_lines = "" # reset abstract string
+    elif line.isspace():
+      abstract_line_split = abstract_lines.splitlines() # split abstract into separate lines
+
+      for abstract_line_number, abstract_line in enumerate(abstract_line_split):
+        line_data: dict = {} # create empty dict to store data from line
+        target_text_split: list = abstract_line.split("\t") # split target label from text
+        line_data["target"] = target_text_split[0] # get target label
+        line_data["text"] = target_text_split[1].casefold() # get target text and lower it
+        line_data["line_number"] = abstract_line_number # what number line does the line appear in the abstract?
+        line_data["total_lines"] = len(abstract_line_split) - 1 # how many total lines are in the abstract? (start from 0)
+        abstract_samples.append(line_data) # add line data to abstract samples list
+    else: # if the above conditions aren't fulfilled, the line contains a labelled sentence
+        abstract_lines += line
+
+  return abstract_samples

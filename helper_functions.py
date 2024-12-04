@@ -353,3 +353,38 @@ def preprocess_text_with_line_numbers(filename: str) -> list[dict]:
         abstract_lines += line
 
   return abstract_samples
+
+
+# MASE implemented courtesy of sktime - https://github.com/alan-turing-institute/sktime/blob/ee7a06843a44f4aaec7582d847e36073a9ab0566/sktime/performance_metrics/forecasting/_functions.py#L16
+def mean_absolute_scaled_error(y_true, y_pred):
+  """
+  Implement MASE (assuming no seasonality of data).
+  """
+  mae = tf.reduce_mean(tf.abs(y_true - y_pred))
+
+  # Find MAE of naive forecast (no seasonality)
+  mae_naive_no_season = tf.reduce_mean(tf.abs(y_true[1:] - y_true[:-1])) # our seasonality is 1 day (hence the shifting of 1 day)
+
+  return mae / mae_naive_no_season
+
+
+def evaluate_preds(y_true, y_pred):
+  # Make sure float32 (for metric calculations)
+  y_true = tf.cast(y_true, dtype=tf.float32)
+  y_pred = tf.cast(y_pred, dtype=tf.float32)
+
+  # Calculate various metrics
+  mae = tf.keras.metrics.MeanAbsoluteError()
+  mae.update_state(y_true, y_pred)
+  mse = tf.keras.metrics.MeanSquaredError() # puts and emphasis on outliers (all errors get squared)
+  mse.update_state(y_true, y_pred)
+  rmse = tf.sqrt(mse.result())
+  mape = tf.keras.metrics.MeanAbsolutePercentageError()
+  mape.update_state(y_true, y_pred)
+  mase = mean_absolute_scaled_error(y_true, y_pred)
+  
+  return {"mae": mae.result().numpy(),
+          "mse": mse.result().numpy(),
+          "rmse": rmse.numpy(),
+          "mape": mape.result().numpy(),
+          "mase": mase.numpy()}
